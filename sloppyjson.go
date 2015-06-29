@@ -43,37 +43,6 @@ import (
 	"strings"
 )
 
-var chr_hex_val_map map[byte]int
-
-func init() {
-  chr_hex_val_map = make(map[byte]int)
-  chr_hex_val_map['0'] = 0
-  chr_hex_val_map['1'] = 1
-  chr_hex_val_map['2'] = 2
-  chr_hex_val_map['3'] = 3
-  chr_hex_val_map['4'] = 4
-  chr_hex_val_map['5'] = 5
-  chr_hex_val_map['6'] = 6
-  chr_hex_val_map['7'] = 7
-  chr_hex_val_map['8'] = 8
-  chr_hex_val_map['9'] = 9
-
-  chr_hex_val_map['a'] = 10
-  chr_hex_val_map['b'] = 11
-  chr_hex_val_map['c'] = 12
-  chr_hex_val_map['d'] = 13
-  chr_hex_val_map['e'] = 14
-  chr_hex_val_map['f'] = 15
-
-  chr_hex_val_map['A'] = 10
-  chr_hex_val_map['B'] = 11
-  chr_hex_val_map['C'] = 12
-  chr_hex_val_map['D'] = 13
-  chr_hex_val_map['E'] = 14
-  chr_hex_val_map['F'] = 15
-
-}
-
 // S - (S)tring
 // L - (L)ist
 // O - (O)bject
