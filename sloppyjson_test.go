@@ -128,7 +128,7 @@ func TestStringEscapes(t *testing.T) {
 		{`"back\bspace"`, "back\bspace"},
 		{`"\u0055nicode"`, "Unicode"},
 		{`"n\u0000ll"`, "n\x00ll"},
-		{`"st\u2695ff"`, "bst\u2695ff"},
+		{`"st\u2695ff"`, "st\u2695ff"},
 		{`"\u260E\u260e"`, "\u260E\u260E"},
 	} {
 		if ret, e := Loads(tc.j); e != nil {

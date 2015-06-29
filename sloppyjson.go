@@ -43,6 +43,37 @@ import (
 	"strings"
 )
 
+var chr_hex_val_map map[byte]int
+
+func init() {
+  chr_hex_val_map = make(map[byte]int)
+  chr_hex_val_map['0'] = 0
+  chr_hex_val_map['1'] = 1
+  chr_hex_val_map['2'] = 2
+  chr_hex_val_map['3'] = 3
+  chr_hex_val_map['4'] = 4
+  chr_hex_val_map['5'] = 5
+  chr_hex_val_map['6'] = 6
+  chr_hex_val_map['7'] = 7
+  chr_hex_val_map['8'] = 8
+  chr_hex_val_map['9'] = 9
+
+  chr_hex_val_map['a'] = 10
+  chr_hex_val_map['b'] = 11
+  chr_hex_val_map['c'] = 12
+  chr_hex_val_map['d'] = 13
+  chr_hex_val_map['e'] = 14
+  chr_hex_val_map['f'] = 15
+
+  chr_hex_val_map['A'] = 10
+  chr_hex_val_map['B'] = 11
+  chr_hex_val_map['C'] = 12
+  chr_hex_val_map['D'] = 13
+  chr_hex_val_map['E'] = 14
+  chr_hex_val_map['F'] = 15
+
+}
+
 // S - (S)tring
 // L - (L)ist
 // O - (O)bject
@@ -134,24 +165,70 @@ func parsefloat( dat string, k, n int ) (*SloppyJSON, int) {
 
   pcount := 0
   b:=k
+  dig_start := b
 
   if dat[k] == '-' {
     k = skipspace(dat,k+1,n)
     if k<0 { return nil, k }
+    dig_start = k
   }
 
+  // Because JSON can't decode floats like every
+  // other sane programming language, we need to put
+  // extra checks in.  Here we check for a leading
+  // '.' without any digits before it.
+  //
+  if dat[k] == '.' { return nil, -1 }
 
+  left_digit_count := 0
+  right_digit_count := 0
+  e_count := 0
   for ; k<n; k++ {
     if dat[k] =='.' {
       pcount++
       if pcount > 1 { return nil, -k }
-    } else if (dat[k]<48) || (dat[k]>57) { break }
+    //} else if (dat[k]<48) || (dat[k]>57) { break }
+    } else if ((dat[k]<48) || (dat[k]>57)) &&
+              (dat[k]!='e') &&
+              (dat[k]!='E') &&
+              (dat[k]!='+') &&
+              (dat[k]!='-') {
+      break
+    } else {
+
+      if dat[k] == 'e' || dat[k] == 'E' {
+
+        // Count the number of 'e' or 'E"s seen.
+        //
+        e_count++
+        if e_count>1 { return nil, -k }
+        continue
+      }
+      if e_count==0 {
+
+        // And count the number of significant digits
+        // seen to the left and right of the decimal point
+        //
+        if pcount > 0 {
+          right_digit_count++
+        } else {
+          left_digit_count++
+        }
+      }
+    }
   }
+
+  // If we've seen a decimal point and either the left or right
+  // significant digit count is zero, that's a parse error.
+  //
+  if (pcount>0) && ((left_digit_count==0) || (right_digit_count==0)) { return nil, -1 }
 
   var e error
 
   v.P,e = strconv.ParseFloat( dat[b:k], 64 )
   if e!=nil { return nil,-k }
+
+  if dat[dig_start] == '.' { return nil, -1 }
 
   return v, k
 
@@ -175,7 +252,7 @@ func parsefalse( dat string, k,n int ) (*SloppyJSON, int) {
   k++ ; if k==n { return nil,-k }
 
   if dat[k] != 'e' { return nil,-k }
-  k++ ; if k==n { return nil,-k }
+  k++ ; //if k==n { return nil,-k }
 
   return v,k
 }
@@ -194,7 +271,7 @@ func parsetrue( dat string, k,n int ) (*SloppyJSON, int) {
   k++ ; if k==n { return nil,-k }
 
   if dat[k] != 'e' { return nil,-k }
-  k++ ; if k==n { return nil,-k }
+  k++ ; //if k==n { return nil,-k }
 
   return v,k
 }
@@ -213,7 +290,7 @@ func parsenull( dat string, k,n int ) (*SloppyJSON, int) {
   k++ ; if k==n { return nil,-k }
 
   if dat[k] != 'l' { return nil,-k }
-  k++ ; if k==n { return nil,-k }
+  k++ ; //if k==n { return nil,-k }
 
   return v,k
 }
@@ -233,23 +310,59 @@ func parsesimplestring( dat string, k,n int ) (string, int) {
 
 }
 
+
 func parsestring( dat string, k,n int ) (*SloppyJSON, int) {
-  b := k
   escape := false
+
+  tbuf := make([]byte, len(dat))
+  tpos := 0
+
   for ; k<n; k++ {
-    if escape { escape = false ; continue }
+
+    if escape {
+
+      // unicode
+      //
+      if (dat[k] == 'u') || (dat[k] == 'U') {
+        if k+5>=n { return nil,-1 }
+
+        r,e := strconv.ParseInt(dat[k+1:k+5], 16, 0)
+        if e!=nil { return nil, -1 }
+        tstr := string(r)
+        for ii:=0; ii<len(tstr); ii++ {
+          tbuf[tpos] = tstr[ii]
+          tpos++
+        }
+
+        k+=4
+
+      } else if dat[k] == '"' { tbuf[tpos] = '"' ; tpos++
+      } else if dat[k] == '\\' { tbuf[tpos] = '\\' ; tpos++
+      } else if dat[k] == '/' { tbuf[tpos] = '/' ; tpos++
+      } else if dat[k] == 'b' { tbuf[tpos] = '\b' ; tpos++
+      } else if dat[k] == 'f' { tbuf[tpos] = '\f' ; tpos++
+      } else if dat[k] == 'n' { tbuf[tpos] = '\n' ; tpos++
+      } else if dat[k] == 'r' { tbuf[tpos] = '\r' ; tpos++
+      } else if dat[k] == 't' { tbuf[tpos] = '\t' ; tpos++ }
+
+      escape = false
+      continue
+    }
     if dat[k] == '\\' {
       escape = true
       continue
     }
     if dat[k] == '"' { break }
+
+    tbuf[tpos] = dat[k]
+    tpos++
   }
 
   if k==n { return nil,-k }
 
   v:=&(SloppyJSON{})
   v.Y = "S"
-  v.S = dat[b:k]
+  v.S = string(tbuf[0:tpos])
 
   return v,k+1
 
@@ -408,6 +521,7 @@ func Loads( dat string ) (*SloppyJSON,error) {
   if k<0 {
 	  return nil, makeError(dat, -k)
   }
+
   if dat[k] == '[' {
     v,k = parselist( dat, k+1, n )
   } else if dat[k] == '{' {
@@ -416,6 +530,12 @@ func Loads( dat string ) (*SloppyJSON,error) {
     v,k = parsestring( dat, k+1 , n )
   } else if (dat[k]>='0' && dat[k]<='9') || dat[k]=='-' {
     v,k = parsefloat(dat, k, n)
+  } else if dat[k] == 't' {
+    v,k = parsetrue(dat, k, n)
+  } else if dat[k] == 'f' {
+    v,k = parsefalse(dat, k, n)
+  } else if dat[k] == 'n' {
+    v,k = parsenull(dat, k, n)
   } else {
     return nil, makeError(dat, k)
   }
