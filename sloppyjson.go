@@ -37,8 +37,11 @@ package sloppyjson
  */
 
 
-import "fmt"
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // S - (S)tring
 // L - (L)ist
@@ -53,6 +56,10 @@ type SloppyJSON struct {
   P float64
   Y string
 }
+
+const (
+	Whitespaces = " \f\n\r\t\v\u00A0"
+)
 
 func ws( indent int ) {
   for i:=0; i<indent; i++ {
@@ -113,21 +120,11 @@ func (sjson *SloppyJSON) Printr( indent,dw int ) {
 func ( sjson *SloppyJSON ) Dump() { sjson.Printr( 0, 2 ) }
 
 func skipspace( dat string, k, n int ) int {
-
-  for ; k<n; k++ {
-    for ; (k<n) && (dat[k] == ' ') ; k++ { }
-    for ; (k<n) && (dat[k] == '\n') ; k++ { }
-    if (k<n) &&
-       (dat[k] != ' ') &&
-       (dat[k] != '\t') &&
-       (dat[k] != '\n') &&
-       (dat[k] != '\v') &&
-       (dat[k] != '\f') &&
-       (dat[k] != '\r') {
-      return k
-    }
-  }
-  return -k
+	for ; k<n && strings.IndexByte(Whitespaces, dat[k]) >= 0; k++ {}
+	if k == n {
+		return -k
+	}
+	return k
 }
 
 func parsefloat( dat string, k, n int ) (*SloppyJSON, int) {
@@ -150,8 +147,6 @@ func parsefloat( dat string, k, n int ) (*SloppyJSON, int) {
       if pcount > 1 { return nil, -k }
     } else if (dat[k]<48) || (dat[k]>57) { break }
   }
-
-  if k==n { return nil,-k }
 
   var e error
 
@@ -397,47 +392,41 @@ func parseobject( dat string, k int, n int ) (*SloppyJSON, int) {
 
 }
 
+func makeError(dat string, k int) error {
+	n := len(dat)
+	st := k-10 ; if st<0 { st = 0 }
+	en := k+10 ; if en>n { en = n }
+	z := fmt.Sprintf("%s(*)%s", dat[st:k], dat[k:en] )
+	return fmt.Errorf("Parse error at character %d (%#v)", k, z)
+}
+
 func Loads( dat string ) (*SloppyJSON,error) {
   var v *SloppyJSON
   k,n := 0,len(dat)
 
   k=skipspace(dat,k,n)
-  if k<0 { return nil,fmt.Errorf("Parse error at initial skipspace (character %d)", k) }
-
-  if dat[k] == '['        { v,k = parselist( dat, k+1, n )
-  } else if dat[k] == '{' { v,k = parseobject( dat, k+1 , n )
-  } else {
-    return nil,fmt.Errorf("Parse error at character %d (1)", -k)
-
-    st := k-10 ; if st<0 { st = 0 }
-    en := k+10 ; if en>n { en = n }
-
-    z := fmt.Sprintf("%s(*)%s", dat[st:k], dat[k:en] )
-
-
-    return nil,fmt.Errorf("Parse error at character %d (1) (%s)", -k, z )
-  }
-
   if k<0 {
-    return nil,fmt.Errorf("Parse error at character %d (2))", k)
-
-    st := -k-10 ; if st<0 { st = 0 }
-    en := -k+10 ; if en>n { en = n }
-
-    z := fmt.Sprintf("%s(*)%s", dat[st:-k], dat[-k:en] )
-
-    return nil,fmt.Errorf("Parse error at character %d (2) (%s)", k, z)
+	  return nil, makeError(dat, -k)
   }
-  if k==n { return v,nil }
+  if dat[k] == '[' {
+    v,k = parselist( dat, k+1, n )
+  } else if dat[k] == '{' {
+    v,k = parseobject( dat, k+1 , n )
+  } else if dat[k] == '"' {
+    v,k = parsestring( dat, k+1 , n )
+  } else if (dat[k]>='0' && dat[k]<='9') || dat[k]=='-' {
+    v,k = parsefloat(dat, k, n)
+  } else {
+    return nil, makeError(dat, k)
+  }
+  if k<0 {
+    return nil, makeError(dat, -k)
+  }
 
   for ; k<n; k++ {
-    if (dat[k] != ' ') &&
-       (dat[k] != '\t') &&
-       (dat[k] != '\n') &&
-       (dat[k] != '\r') {
-      return nil,fmt.Errorf("Parse error for trailing whitespace at character %d", -k)
+    if strings.IndexByte(Whitespaces, dat[k]) == -1 {
+      return nil, makeError(dat, k)
     }
   }
-  return v,nil
-
+  return v, nil
 }
