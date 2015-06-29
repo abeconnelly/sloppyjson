@@ -187,7 +187,6 @@ func parsefloat( dat string, k, n int ) (*SloppyJSON, int) {
     if dat[k] =='.' {
       pcount++
       if pcount > 1 { return nil, -k }
-    //} else if (dat[k]<48) || (dat[k]>57) { break }
     } else if ((dat[k]<48) || (dat[k]>57)) &&
               (dat[k]!='e') &&
               (dat[k]!='E') &&
@@ -198,7 +197,7 @@ func parsefloat( dat string, k, n int ) (*SloppyJSON, int) {
 
       if dat[k] == 'e' || dat[k] == 'E' {
 
-        // Count the number of 'e' or 'E"s seen.
+        // Count the number of 'e' or 'E's seen.
         //
         e_count++
         if e_count>1 { return nil, -k }
@@ -271,7 +270,7 @@ func parsetrue( dat string, k,n int ) (*SloppyJSON, int) {
   k++ ; if k==n { return nil,-k }
 
   if dat[k] != 'e' { return nil,-k }
-  k++ ; //if k==n { return nil,-k }
+  k++
 
   return v,k
 }
@@ -290,7 +289,7 @@ func parsenull( dat string, k,n int ) (*SloppyJSON, int) {
   k++ ; if k==n { return nil,-k }
 
   if dat[k] != 'l' { return nil,-k }
-  k++ ; //if k==n { return nil,-k }
+  k++
 
   return v,k
 }
