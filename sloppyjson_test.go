@@ -65,6 +65,7 @@ func TestWhitespace(t *testing.T) {
 
 func TestInvalid(t *testing.T) {
 	for _, j := range []string{
+    ``,
 		`["foo\"]`,
 		`["foo\uFFOO"]`,
 		`["foo\UNVALID"]`,

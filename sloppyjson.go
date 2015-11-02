@@ -485,6 +485,8 @@ func Loads( dat string ) (*SloppyJSON,error) {
   var v *SloppyJSON
   k,n := 0,len(dat)
 
+  if n==0 { return nil, fmt.Errorf("empty string") }
+
   k=skipspace(dat,k,n)
   if k<0 {
 	  return nil, makeError(dat, -k)
